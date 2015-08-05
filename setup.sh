@@ -4,34 +4,41 @@
 function install_jdk() {  
 
 # 1.unzip and install JDK(jdk-7u79-linux-x64.bin)
-  if [-d /usr/java] ;then 
+  if [ -d  /usr/java ] ;then 
      echo "---/usr/java is exist!---"
   else    
-    mkdir /usr/java
+    sudo mkdir /usr/java
   fi
   tar -xzvf ./jdk-7u79-linux-x64.tar.gz 
   chmod u+x ./jdk1.7.0_79
-  ./jdk1.7.0_79 
-  mv ./jdk1.7.0_79  /usr/java/jdk1.7.0_79
+  sudo mv ./jdk1.7.0_79  /usr/java/jdk1.7.0_79
   rm -rf ./jdk1.7.0_79
  
 
 # 2. config /etc/profile
 
-  cp /etc/profile  ./bak
-
-  echo "JAVA_HOME=/usr/java/jdk1.7.0_79" >> /etc/profile
-  echo "export JRE_HOME=/usr/lib/jvm/jdk1.7.0_45/jre" >> /etc/profile
-  echo "PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH" >> /etc/profile
-  echo "CLASSPATH=$CLASSPATH:.:$JAVA_HOME/lib:$JAVA_HOME/jre/lib" >> /etc/profile
+  sudo cp /etc/profile  ./bak
+  chmod 755 /etc/profile 
+  sudo cat >> /etc/profile  << EFF
+  JAVA_HOME=/usr/java/jdk1.7.0_79
+  JRE_HOME=\$JAVA_HOME/jre
+  CLASSPATH=:\$JAVA_HOME/lib:\$JRE_HOME/lib
+  PATH=\$JAVA_HOME/bin:\$JRE_HOME/bin:\$PATH
+  export JAVA_HOME JRE_HOME CLASSPATH PATH
+EFF
+  source /etc/profile
+  #echo "JAVA_HOME=/usr/java/jdk1.7.0_79" >> /etc/profile
+  #echo "export JRE_HOME=/usr/lib/jvm/jdk1.7.0_79/jre" >> /etc/profile
+  #echo "PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH" >> /etc/profile
+  #echo "CLASSPATH=$CLASSPATH:.:$JAVA_HOME/lib:$JAVA_HOME/jre/lib" >> /etc/profile
 
   
   echo "-->JDK environment has been successed set in /etc/profile."
 
 # 3. Test JDK evironment
-  if [[ ! -z $(ls /user/java/jdk1.7.0_45) ]];
+  if [[ ! -z $(ls /user/java/jdk1.7.0_79) ]];
   then
-    echo "-->Failed to install JDK (jdk-7u79-linux-x64 : /usr/java/jdk1.7.0_45)"
+    echo "-->Failed to install JDK (jdk-7u79-linux-x64 : /usr/java/jdk1.7.0_79)"
   else 
     echo "-->JDK has been successed installed."
     echo "java -version"
@@ -47,23 +54,23 @@ function install_jdk() {
 }
 
 #get package_install_dir
-function getPackge_dir(){
+#function getPackge_dir(){
    echo "---please input the package_install_dir---"
    echo "---for example:/home/zlj/myspace/ciengine---"
    read package_install_dir
-   return $(package_install_dir)   
-}
+ #  return ${package_install_dir}  
+#}
 
 #config the mysql
 default_hibernate_connection_url=jdbc:mysql://localhost:3306/ciengine
-default_hibernate_cfg=${package_install_dir}/BSData/src/main/resources/hibernate.cfg.xml
+default_hibernate_cfg=$package_install_dir/BSData/src/main/resources/hibernate.cfg.xml
 function setMysqlConfig() { 
-   cp ${default_hibernate_cfg}  ./bak
+   sudo cp ${default_hibernate_cfg}  ./bak
    #echo "${package_install_dir}/${default_hibernate_cfg_dir}" 
    echo "---do you want to use default hibernate.connection.url like this:${default_hibernate_connection_url}---"
    echo "---yes or no---"
    read bool
-   if ["$bool"="yes"];then
+   if [ $bool = "yes" ];then
       hibernate_connection_url=${default_hibernate_connection_url}
    else
      echo "---please input a new hibernate.connection.url---"
@@ -74,14 +81,14 @@ function setMysqlConfig() {
    read mysql_username
    echo "---please input the mysql_password---"
    read mysql_password
-   sed 's/${default_hibernate_connection_url}/${hibernate_connection_url}/g'  ${default_hibernate_cfg}
-   sed 's/mysql_username/${mysql_username}/g' ${default_hibernate_cfg}
-   sed 's/mysql_password/${mysql_password}/g' ${default_hibernate_cfg}
+   sed -i "s/${default_hibernate_connection_url}/${hibernate_connection_url}/g"  ${default_hibernate_cfg}
+   sed -i "s/mysql_username/${mysql_username}/g" ${default_hibernate_cfg}
+   sed -i "s/mysql_password/${mysql_password}/g" ${default_hibernate_cfg}
    echo "---mysql config is ready!---"
 }
 
 #config the gerrit and jenkins config
-default_buiding_service_prop=${package_install_dir}/BuildingService/src/main/resources/building-service.properties
+default_buiding_service_prop=$package_install_dir/BuildingService/src/main/resources/building-service.properties
 function setService_prop(){
    cp ${default_buiding_service_prop}  ./bak
    echo "---please input the gerrit_server---"
@@ -92,24 +99,20 @@ function setService_prop(){
    read jenkins_server
    echo "---please input the jenkins_port---"
    read jenkins_port
-   sed 's/gerrit server/${gerrit_server}/g' ${default_buiding_service_prop}
-   sed 's/port/${gerrit_port}/' ${default_buiding_service_prop}
-   sed 's/gerrit server/${jenkins_server}/g' ${default_buiding_service_prop}
-   sed 's/port/${jenkins_port}/' ${default_buiding_service_prop}
+   sed -i "s/gerrit server/${gerrit_server}/g" ${default_buiding_service_prop}
+   sed -i "s/port/${gerrit_port}/" ${default_buiding_service_prop}
+   sed -i "s/gerrit server/${jenkins_server}/g" ${default_buiding_service_prop}
+   sed -i "s/port/${jenkins_port}/" ${default_buiding_service_prop}
    echo "---gerrit and jenkins is ready!---"
 }
 
 JAVA_HOME=/usr/java/jdk1.7.0_79
-echo $JAVA_HOME
+#echo $JAVA_HOME
 
-running_user=root
 
-project_mainclass=
+project_mainclass=com.intel.cpeg.core.bs.data.testTblJob
 
-CLASSPATH=$package_install_dir 
-for i in "$package_install_dir"/lib/*.*; do 
-CLASSPATH="$CLASSPATH":"$i" 
-done 
+CLASSPATH=/home/zlj/workspace/ciengine/BSData/target/BSData-1.0.jar
 
 JAVA_OPTS="-ms512m -mx512m -Xmn256m -Djava.awt.headless=true -XX:MaxPermSize=128m" 
 
@@ -134,13 +137,14 @@ function startService() {
       echo "================================" 
    else 
       echo -n "Starting $project_mainclass ..." 
-      JAVA_CMD="nohup $JAVA_HOME/bin/java $JAVA_OPTS -classpath $CLASSPATH $project_mainclass >/dev/null 2>&1 &" 
-      su - $running_user -c "$JAVA_CMD" 
+      JAVA_CMD="nohup $JAVA_HOME/bin/java $JAVA_OPTS -classpath $CLASSPATH $project_mainclass & " 
+      $JAVA_CMD
       checkpid 
       if [ $psid -ne 0 ]; then 
          echo "(pid=$psid) [OK]" 
       else 
-         echo "[Failed]" 
+	 echo "[OK]" 
+     #    echo "[Failed]" 
       fi 
     fi 
 } 
@@ -195,37 +199,38 @@ function serviceInfo() {
 usetime=0
 
 function main {
-   if [${usetime} -eq 0];then
-      install_jdk
-      setMysqlConfig
-      setService_prop
-      usetime=1
-   else
       case "$1" in 
-      'startService') 
+      startService) 
        startService 
        ;; 
-      'stopService') 
+      stopService) 
        stopService 
        ;; 
-      'restart') 
+      restart) 
        stopService 
        startService 
        ;; 
-      'serviceStatus') 
+      serviceStatus) 
        serviceStatus 
        ;; 
-      'serviceInfo') 
+      serviceInfo) 
        serviceInfo 
        ;; 
       *) 
        echo "Usage: $0 {startService|stopService|restart|serviceStatus|serviceInfo}" 
-        exit 1 
+       exit 1 
        ;;
       esac 
    exit 0
-
 }
 
-getPackge_dir
+
+
+if [ $usetime -eq 0 ];then
+  # getPackge_dir
+   install_jdk
+   setMysqlConfig
+   setService_prop
+   usetime=1
+fi
 main $1
